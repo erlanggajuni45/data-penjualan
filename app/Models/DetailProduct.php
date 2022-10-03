@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class DetailProduct extends Model
 {
   protected $table = "detail_barang";
-  protected $fillable = ["id_barang","jenis_barang", "seluruh_stok"];
+  protected $fillable = ["id_barang","jenis_barang"];
 
   public $timestamps = false;
 

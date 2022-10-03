@@ -15,8 +15,8 @@ class CreateDetailBarangTable extends Migration
     {
         Schema::create('detail_barang', function (Blueprint $table) {
             $table->bigIncrements('id_barang');
+            $table->unsignedBigInteger('harga');
             $table->string('jenis_barang');
-            $table->unsignedBigInteger('seluruh_stok');
 
             $table->foreign('id_barang')->references('id_barang')->on('barang')->onDelete('cascade');
         });

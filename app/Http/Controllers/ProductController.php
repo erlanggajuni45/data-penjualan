@@ -14,26 +14,26 @@ class ProductController extends Controller
     function addProduct(Request $req)
     {
         $validator = Validator::make($req->all(), [
-          'nama_barang' => 'required',
+            'nama_barang' => 'required',
             'stok' => 'required|integer',
             'jenis_barang' => 'required',
+            'harga' => 'required|integer',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->messages(), 400);
         } else {
-
         $product = new Product;
         $product->nama_barang=$req->input('nama_barang');
-        $product->stok_tersedia=$req->input('stok');
+        $product->stok=$req->input('stok');
         $product->save();
 
         $id_product = $product->id;
 
          $detail = new DetailProduct;
          $detail->id_barang = $id_product;
-         $detail->jenis_barang = $req->input('jenis_barang');
-         $detail->seluruh_stok = $req->input('stok');
+         $detail->jenis_barang = $req->jenis_barang;
+         $detail->harga = $req->harga;
          $detail->save();
 
          if($product && $detail) {
@@ -52,20 +52,9 @@ class ProductController extends Controller
     {
       $query = DB::select(
                   Db::raw("
-                  SELECT B.*,  D.jenis_barang, D.seluruh_stok,
-                  T.tanggal_transaksi, stok_terjual
-                  FROM barang as B
-                   INNER JOIN detail_barang as D
-                   ON B.id_barang = D.id_barang
-                   LEFT JOIN transaksi_barang as T
-                   ON B.id_barang = T.id_barang
-                   WHERE tanggal_transaksi=(
-                     SELECT max(tanggal_transaksi)
-                     from transaksi_barang
-                     WHERE id_barang = T.id_barang
-                     )
-                     OR tanggal_transaksi IS NULL
-                     ORDER BY B.id_barang
+                        SELECT B.*, D.jenis_barang, D.harga
+                        FROM barang as B INNER JOIN detail_barang as D
+                        ON B.id_barang = D.id_barang
                      "));
           if ($query) {
             $rsp['code'] = 200;
@@ -73,26 +62,6 @@ class ProductController extends Controller
             $rsp['data'] = $query;
             return response()->json($rsp, 200);
           }
-    }
-
-    function detailProduct($id){
-      $query = DB::select(
-                  DB::raw("
-                  SELECT B.*,D.jenis_barang, D.seluruh_stok,
-                  T.id_transaksi, T.tanggal_transaksi, T.stok_terjual
-                  FROM barang as B
-                   INNER JOIN detail_barang as D
-                   ON B.id_barang = D.id_barang
-                   LEFT JOIN transaksi_barang as T
-                   ON B.id_barang = T.id_barang
-                   WHERE B.id_barang = $id
-                   ORDER BY id_transaksi DESC"));
-      if ($query) {
-        $rsp['code'] = 200;
-        $rsp['message'] = 'Success';
-        $rsp['data'] = $query;
-        return response()->json($rsp);
-      }
     }
 
     function editProduct($id){
@@ -118,33 +87,34 @@ class ProductController extends Controller
     function updateProduct($id, Request $req){
        $product = Product::where('id_barang', $id)->first();
        if($product) {
-       $detail = DetailProduct::where('id_barang',$id)->first();
-         $on_stock = $product->stok_tersedia;
-         $input_stock = $req->stok;
-         $new_stock = $detail->seluruh_stok;
 
-         if ($input_stock != $on_stock){
-           $new_stock += $input_stock - $on_stock;
-         }
+         $validator = Validator::make($req->all(), [
+             'nama_barang' => 'required',
+             'stok' => 'required|integer',
+             'jenis_barang' => 'required',
+             'harga' => 'required|integer',
+         ]);
+         if ($validator->fails()) {
+             return response()->json($validator->messages(), 400);
+         } else {
+             $update_product = $product->where('id_barang', $id)->update([
+                               'nama_barang' => $req->nama_barang,
+                               'stok' => $req->stok
+                             ]);
 
-       $update_product = $product->where('id_barang', $id)->update([
-                           'nama_barang' => $req->nama_barang,
-                           'stok_tersedia' => $req->stok
-                         ]);
-
-       $update_detail = $detail->where('id_barang', $id)->update([
-                         'jenis_barang' => $req->input('jenis_barang'),
-                         'seluruh_stok' => $new_stock
-                          ]);
+             $update_detail = DetailProduct::where('id_barang', $id)->update([
+                             'jenis_barang' => $req->jenis_barang,
+                             'harga' => $req->harga,
+                              ]);
 
         if($update_product && $update_detail){
           $rsp['code'] = 200;
           $rsp['message'] = 'Barang berhasil diupdate';
           return response()->json($rsp, 200);
-        } else {
-          $rsp['code'] = 403;
-          $rsp['message'] = 'Barang gagal diupdate';
-          return response()->json($rsp, 403);
+        }
+        // else {
+        //    return response()->json(['message' => 'Barang gagal diupdate'], 400);
+        //  }
         }
       } else {
         return response()->json(['message' => 'Barang tidak ditemukan'], 404);
@@ -155,9 +125,9 @@ class ProductController extends Controller
         function deleteProduct($id){
           $query = Product::where('id_barang',$id)->delete();
           if ($query) {
-          return response()->json(['Message' => 'produk berhasil dihapus'], 204);
+          return response()->json(['message' => 'produk berhasil dihapus'], 204);
         } else {
-          return response()->json(['Message' => 'produk yang akan dihapus tidak ditemukan'], 404);
+          return response()->json(['message' => 'produk yang akan dihapus tidak ditemukan'], 404);
         }
         }
 
